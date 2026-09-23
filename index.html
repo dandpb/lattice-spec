@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lattice — especificação</title>
+<meta name="description" content="Especificação para reproduzir o Lattice, um Game of Life de Conway.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #0a0b0c;
+    color: #e8ece9;
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  header {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    background: rgba(20,22,24,.92);
+    border-bottom: 1px solid #2a2e2c;
+    backdrop-filter: blur(10px);
+  }
+  .mark { display: grid; grid-template-columns: repeat(3, 6px); gap: 2px; }
+  .mark i { width: 6px; height: 6px; background: #2a2e2c; display: block; }
+  .mark i.on { background: #7ec8f8; }
+  header strong { letter-spacing: .14em; font-size: 13px; }
+  header span { color: #8a9290; font-size: 13px; }
+  header a { margin-left: auto; color: #e8ece9; font-size: 13px; }
+  main { max-width: 820px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font-size: 32px; letter-spacing: -0.03em; font-weight: 500; margin: 0 0 16px; }
+  h2 { font-size: 22px; font-weight: 500; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid #2a2e2c; }
+  h3 { font-size: 16px; font-weight: 500; margin: 28px 0 8px; color: #c8ead6; }
+  p, li { color: #d5dbd7; }
+  a { color: #7ec8f8; }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .88em;
+    background: #1c1f22;
+    padding: .1em .35em;
+    border-radius: 4px;
+  }
+  pre {
+    background: #141618;
+    border: 1px solid #2a2e2c;
+    border-radius: 10px;
+    padding: 12px 14px;
+    overflow: auto;
+  }
+  pre code { background: none; padding: 0; color: #c8ead6; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a2e2c; vertical-align: top; }
+  th { color: #8a9290; font-weight: 500; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+  ul, ol { padding-left: 1.2em; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 8px; }
+  nav a {
+    color: #e8ece9; text-decoration: none; font-size: 13px;
+    background: #141618; border: 1px solid #2a2e2c; border-radius: 999px;
+    padding: 6px 10px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <span class="mark" aria-hidden="true"><i></i><i class="on"></i><i></i><i></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>
+  <strong>LATTICE</strong>
+  <span>especificação</span>
+  <a href="./LATTICE.md">Markdown</a>
+</header>
+<main>
+<nav>
+  <a href="#visual">Visual</a>
+  <a href="#motor">Motor</a>
+  <a href="#pintura">Pintura</a>
+  <a href="#padroes">Padrões</a>
+  <a href="#chrome">Chrome</a>
+  <a href="#atalhos">Atalhos</a>
+  <a href="#guia">Guia</a>
+  <a href="#criterio-de-pronto">Pronto</a>
+</nav>
+<h1>Lattice — especificação para reproduzir</h1>
+<p>Construa <strong>Lattice</strong>, um Game of Life de Conway no navegador, dark, com grid pintável, paleta por idade e padrões clássicos.</p>
+<p>O universo é um torus de <strong>240×140</strong>. Regras <strong>B3/S23</strong>: célula viva com 2 ou 3 vizinhos sobrevive; morta com exatamente 3 nasce; o resto morre. Vizinhos fora do mundo só existem se Wrap estiver ligado (borda = toro). Sem login, sem banco. Estado só em memória + <code>localStorage</code>.</p>
+<p>Não simplifique para “quadrados verdes”. A cor por idade, o rastro e o tile arredondado são o produto.</p>
+<h2 id="visual">Visual</h2>
+<p>Chrome escuro, sem roxo de marca. Fontes IBM Plex Sans e Mono. Alvos de toque ≥ 44px, sem overflow horizontal em 390px. Título da página: <strong>Lattice</strong>.</p>
+<table><thead><tr><th>Token</th><th>Valor</th></tr></thead><tbody><tr><td>Fundo</td><td><code>#0a0b0c</code></td></tr><tr><td>Surface</td><td><code>#141618</code></td></tr><tr><td>Surface 2</td><td><code>#1c1f22</code></td></tr><tr><td>Texto</td><td><code>#e8ece9</code></td></tr><tr><td>Muted</td><td><code>#8a9290</code></td></tr><tr><td>Borda</td><td><code>#2a2e2c</code></td></tr></tbody></table>
+<p>O mundo é um <code><canvas></code> 2D (não CSS grid). O buffer lógico fica fora do React; o React só desenha o chrome. Loop em <code>requestAnimationFrame</code>, timestep fixo: acumula <code>dt</code> (cap 0.1 s) e dá no máximo 12 gerações por frame. Velocidade = gerações por segundo (slider <strong>1–60</strong>, default <strong>10</strong>). Enquanto o guia estiver aberto, a simulação pausa.</p>
+<h3>Células vivas — cor por idade</h3>
+<p>Não use um verde só.</p>
+<ul><li><code>t = 0</code> se idade ≤ 1; senão <code>min(0.88, log2(idade) / 6)</code></li><li>8 faixas de idade: 1, 3, 8, 16, 32, 64, 128, 255</li><li>Paletas interpolam 5 stops nesse <code>t</code></li><li><strong>Prism</strong> (default) não usa os stops no mundo: HSL <code>hue 48 + t*280</code>, saturação <code>78 − t*18</code>, luminosidade <code>72 − t*26</code></li><li>Ao morrer, <code>heat = 140</code> e decai 28 por geração. Rastro dim, mesma família da paleta, alpha no máximo ~0.34, só se heat ≥ 28</li><li>Células antigas <strong>não</strong> podem escurecer até sumir no fundo morto</li></ul>
+<h3>Paletas</h3>
+<p>Stops são nascimento → velho. O swatch da UI usa os stops; Prism no canvas usa HSL.</p>
+<table><thead><tr><th>Id</th><th>Nome</th><th>Hint</th><th>Morto RGB</th><th>Heat RGB</th><th>Stops RGB</th></tr></thead><tbody><tr><td><code>celadon</code></td><td>Celadon</td><td>Mint births, teal-blue still-lifes</td><td>16, 18, 19</td><td>255, 210, 140</td><td>248,255,252 · 140,230,186 · 64,196,168 · 48,158,176 · 72,128,196</td></tr><tr><td><code>ember</code></td><td>Ember</td><td>Hot sparks that cool to coal</td><td>22, 14, 12</td><td>255, 196, 90</td><td>255,247,214 · 255,179,71 · 232,93,4 · 200,70,40 · 168,52,48</td></tr><tr><td><code>tide</code></td><td>Tide</td><td>Ice births, cobalt still-lifes</td><td>12, 16, 22</td><td>180, 230, 255</td><td>236,252,255 · 125,211,252 · 56,189,248 · 37,99,235 · 67,56,202</td></tr><tr><td><code>aurora</code></td><td>Aurora</td><td>Teal to violet by age</td><td>14, 14, 22</td><td>244, 114, 182</td><td>94,234,212 · 56,189,248 · 167,139,250 · 232,121,249 · 244,114,182</td></tr><tr><td><code>prism</code></td><td>Prism</td><td>Full spectrum by longevity</td><td>14, 14, 16</td><td>251, 191, 36</td><td>254,240,138 · 74,222,128 · 34,211,238 · 167,139,250 · 244,114,182</td></tr></tbody></table>
+<p>Fundo fora do mundo:</p>
+<table><thead><tr><th>Paleta</th><th>Outside</th></tr></thead><tbody><tr><td>Celadon</td><td><code>#070808</code></td></tr><tr><td>Ember</td><td><code>#0a0706</code></td></tr><tr><td>Tide</td><td><code>#05080c</code></td></tr><tr><td>Aurora</td><td><code>#07080c</code></td></tr><tr><td>Prism</td><td><code>#08080a</code></td></tr></tbody></table>
+<h3>Render</h3>
+<ul><li>Zoom <code>< 4px</code>: <code>ImageData</code> nearest-neighbor (LUT de idade + heat), sem grid</li><li><code>≥ 4px</code>: tiles arredondados, raio <code>max(3, round(cellSize * 0.4))</code>; highlight branco ~42% no topo a partir de 6px</li><li>Grid de 1px só a partir de <strong>8px</strong></li><li>Gap de 1px entre células se a face ≥ 10px</li><li>Retângulos com <code>Math.round</code> para não borrar</li><li>Zoom de 1 a 40px; a partir de 4px, arredonda para inteiro</li><li>Zoom vai em direção ao cursor</li><li><strong>Fit</strong> encaixa o mundo com 16px de margem. No primeiro encaixe, se a célula ficar <code>< 12px</code>, força <strong>12px</strong> e mostra o canto do canhão (<code>panX 0</code>, <code>panY 8</code>)</li><li>Legenda <strong>New → Old</strong> no canto inferior esquerdo, também no telefone</li></ul>
+<h2 id="motor">Motor</h2>
+<p>Três <code>Uint8Array</code> do tamanho do mundo:</p>
+<ul><li><code>cells</code> — 0/1. A soma de vizinhos <strong>só</strong> usa isso</li><li><code>age</code> — 0–255</li><li><code>heat</code> — rastro de morte</li></ul>
+<p>Double buffer em <code>step</code>.</p>
+<ul><li>Pintar uma célula morta: <code>age = 1</code>, heat 0</li><li>Apagar: age 0, heat 140</li><li><strong>Randomize</strong>: densidade 0.22, zera geração, heat 0, idade aleatória <code>1 + random * 80</code> nas vivas (a sopa já nasce colorida)</li><li>Clear zera células, idade, heat, população e geração</li></ul>
+<h2 id="pintura">Pintura</h2>
+<p>Pointer events, não mouse puro.</p>
+<ul><li>O primeiro clique decide: se a célula está viva, o traço apaga; se morta, pinta. Shift ou botão direito força apagar</li><li>O traço interpola com <strong>Bresenham</strong> + <code>getCoalescedEvents</code>, senão o arrasto fura</li><li>Pincel 1, 2 ou 3: quadrado de Chebyshev, raio <code>brush - 1</code></li><li>Pan: Alt, botão do meio, tecla Hand (<code>H</code>), ou dois dedos</li><li>Pinch: dois dedos, zoom pela distância, deadzone ~3.5%</li><li>Roda do mouse faz zoom</li><li>Carimbo: o padrão segue o cursor (ghost semitransparente, também arredondado). Clique ou Enter solta centrado. Escape cancela. Carimbo ganha do modo pan</li></ul>
+<h2 id="demo-inicial">Demo inicial</h2>
+<p>Carimbar com origem no canto superior esquerdo do padrão. Começa <strong>rodando</strong>.</p>
+<table><thead><tr><th>Padrão</th><th>Origem (x, y)</th></tr></thead><tbody><tr><td>Gosper glider gun</td><td>12, 22</td></tr><tr><td>Pulsar</td><td>168, 18</td></tr><tr><td>Glider</td><td>108, 88</td></tr><tr><td>Lightweight spaceship</td><td>42, 108</td></tr></tbody></table>
+<h2 id="padroes">Padrões</h2>
+<p>Plaintext: <code>O</code> = viva, <code>.</code> = morta.</p>
+<p>Grupos e dicas do menu:</p>
+<table><thead><tr><th>Grupo</th><th>Dica</th></tr></thead><tbody><tr><td>Still life</td><td>Never change</td></tr><tr><td>Oscillator</td><td>Cycle in place</td></tr><tr><td>Spaceship</td><td>Move each generation</td></tr><tr><td>Gun</td><td>Emit spaceships forever</td></tr><tr><td>Methuselah</td><td>Grow for a long time</td></tr></tbody></table>
+<h3>Still life</h3>
+<p><strong>Block</strong></p>
+<pre><code>OO
+OO</code></pre>
+<p><strong>Beehive</strong></p>
+<pre><code>.OO
+O..O
+.OO</code></pre>
+<p><strong>Loaf</strong></p>
+<pre><code>.OO.
+O..O
+.O.O
+..O.</code></pre>
+<p><strong>Boat</strong></p>
+<pre><code>OO.
+O.O
+.O.</code></pre>
+<p><strong>Ship</strong></p>
+<pre><code>OO.
+O.O
+.OO</code></pre>
+<h3>Oscillator</h3>
+<p><strong>Blinker</strong></p>
+<pre><code>OOO</code></pre>
+<p><strong>Toad</strong></p>
+<pre><code>.OOO
+OOO.</code></pre>
+<p><strong>Beacon</strong></p>
+<pre><code>OO..
+OO..
+..OO
+..OO</code></pre>
+<p><strong>Clock</strong> — oscilador período 2, não still life</p>
+<pre><code>..O.
+O.O.
+.O.O
+.O..</code></pre>
+<p><strong>Pentadecathlon</strong></p>
+<pre><code>..O....O..
+OO.OOOO.OO
+..O....O..</code></pre>
+<p><strong>Pulsar</strong> — 13×13</p>
+<pre><code>..OOO...OOO..
+.............
+O....O.O....O
+O....O.O....O
+O....O.O....O
+..OOO...OOO..
+.............
+..OOO...OOO..
+O....O.O....O
+O....O.O....O
+O....O.O....O
+.............
+..OOO...OOO..</code></pre>
+<h3>Spaceship</h3>
+<p><strong>Glider</strong></p>
+<pre><code>.O.
+..O
+OOO</code></pre>
+<p><strong>Lightweight spaceship</strong></p>
+<pre><code>.O..O
+O....
+O...O
+OOOO.</code></pre>
+<p><strong>Middleweight spaceship</strong></p>
+<pre><code>...O.
+.O...O
+O.....
+O....O
+OOOOO.</code></pre>
+<p><strong>Heavyweight spaceship</strong></p>
+<pre><code>...OO.
+.O....O
+O......
+O.....O
+OOOOOO.</code></pre>
+<h3>Gun</h3>
+<p><strong>Gosper glider gun</strong> — 36×9 canônico</p>
+<pre><code>........................O...........
+......................O.O...........
+............OO......OO............OO
+...........O...O....OO............OO
+OO........O.....O...OO..............
+OO........O...O.OO....O.O...........
+..........O.....O.......O...........
+...........O...O....................
+............OO......................</code></pre>
+<p><strong>Simkin glider gun</strong> — exatamente estas 15 linhas de 33 colunas (29 células, dois barris; tem que disparar)</p>
+<pre><code>OO.....OO........................
+OO.....OO........................
+.................................
+....OO...........................
+....OO...........................
+.................................
+.................................
+.................................
+.................................
+......................OO.OO......
+.....................O.....O.....
+.....................O......O..OO
+.....................OOO...O...OO
+..........................O......</code></pre>
+<p>Depois de ~30 gerações o Simkin deve crescer (população sobe e gliders saem). Clock deve oscilar período 2, não ficar parado.</p>
+<h3>Methuselah</h3>
+<p><strong>R-pentomino</strong></p>
+<pre><code>.OO
+OO.
+.O.</code></pre>
+<p><strong>Acorn</strong></p>
+<pre><code>.O.....
+...O...
+OO..OOO</code></pre>
+<p><strong>Diehard</strong></p>
+<pre><code>......O.
+OO......
+.O...OOO</code></pre>
+<p><strong>Thunderbird</strong></p>
+<pre><code>OOO
+...
+.O.
+.O.
+.O.</code></pre>
+<h2 id="chrome">Chrome</h2>
+<p>Barra fixa no topo, fundo quase opaco.</p>
+<p><strong>Linha 1:</strong> marca (glider de 5 quadrados em SVG) + <strong>LATTICE</strong> + subtítulo “Conway's Game of Life” (some no telefone) + <strong>GEN</strong> e <strong>ALIVE</strong> em mono + swatch do look (sempre visível, inclusive no telefone) + botão de guia.</p>
+<p><strong>Linha 2</strong> (ou à direita em desktop largo, sem quebrar): Play/Pause, Step, slider <code>N/s</code>, Patterns, e no desktop Pan, Clear, Randomize, pincéis 1 2 3, zoom −/+, Fit, Wrap on/off. No telefone isso vai num menu <strong>More</strong>, com Look no topo do menu também.</p>
+<p>Botões 44px, <code>shrink-0</code>. Slider com thumb grande e <code>aria-label</code>.</p>
+<p>Persistência:</p>
+<table><thead><tr><th>Chave</th><th>Valor</th></tr></thead><tbody><tr><td><code>lattice-look</code></td><td>id da paleta (<code>prism</code> default)</td></tr><tr><td><code>lattice-tour</code></td><td><code>"1"</code> depois de Skip ou fechar o guia</td></tr></tbody></table>
+<p>O guia abre na primeira visita.</p>
+<h2 id="atalhos">Atalhos</h2>
+<table><thead><tr><th>Tecla</th><th>Ação</th></tr></thead><tbody><tr><td>Space</td><td>Play / pause</td></tr><tr><td><code>N</code> ou <code>.</code></td><td>Um passo e pausa</td></tr><tr><td><code>C</code></td><td>Limpa</td></tr><tr><td><code>R</code></td><td>Randomiza</td></tr><tr><td><code>F</code></td><td>Fit</td></tr><tr><td><code>H</code></td><td>Alterna pan / pintar</td></tr><tr><td><code>1</code> <code>2</code> <code>3</code></td><td>Pincel</td></tr><tr><td><code>P</code></td><td>Cicla paleta</td></tr><tr><td><code>+</code> / <code>−</code></td><td>Zoom</td></tr><tr><td>WASD e setas</td><td>Pan ~420 px/s</td></tr><tr><td>Enter</td><td>Solta o carimbo no centro da vista</td></tr><tr><td>Esc</td><td>Cancela o carimbo</td></tr><tr><td><code>?</code></td><td>Abre o guia</td></tr></tbody></table>
+<p>Atalhos não disparam dentro de input. Com o guia aberto, só as teclas do guia funcionam.</p>
+<h2 id="guia">Guia</h2>
+<p>6 passos, dialog no centro, fundo escurecido. Skip no passo 1; Back depois; Next até fechar. Esc fecha. Setas trocam passo. Enter avança.</p>
+<ol><li><strong>The rules</strong> — texto B3/S23 + mini diagrama 3×3 do glider</li><li><strong>Paint the grid</strong> — arrastar desenha; o primeiro clique escolhe pintar ou apagar; Shift ou botão direito apaga</li><li><strong>Run time</strong> — Space corre; N dá um passo e pausa; slider é gerações por segundo</li><li><strong>Stamp a pattern</strong> — Patterns, depois toque na grade; Esc cancela</li><li><strong>Move the view</strong> — scroll ou pinch zoom; Alt-drag, dois dedos ou Hand pan; Fit mostra o mundo; Wrap = toro</li><li><strong>You're set</strong> — Gen é o tick; Alive é a população; o <code>?</code> reabre o guia</li></ol>
+<h2 id="dicas-de-rodape">Dicas de rodapé</h2>
+<ul><li>Telefone: <code>Drag to paint · two fingers pan · pinch zoom</code></li><li>Desktop: <code>Paint to draw · right-click or Shift erases · scroll zooms · Alt-drag or Hand pans · Space plays</code></li></ul>
+<h2 id="criterio-de-pronto">Critério de pronto</h2>
+<ul><li>Canhão de Gosper dispara</li><li>Simkin dispara (população sobe depois de ~30 gerações)</li><li>Clock é período 2, não still life</li><li>Pintar com o mouse não fura células</li><li>A 12px as células são pastilhas com canto arredondado (não quadrado 90°) e reflexo no topo</li><li>Still life escurece mas continua visível; glider fica claro; morte deixa rastro curto, sem virar tapete</li><li>Prism, Ember, Tide e Aurora são distinguíveis numa sopa aleatória (Tide azul, Aurora com magenta, Ember quente)</li><li>Telefone 390px: sem scroll horizontal, Look e legenda New→Old visíveis, alvos ≥ 44px</li><li>Sem erros de console</li></ul>
+
+</main>
+</body>
+</html>
